@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schema Maud - Tal&coaching</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#2D4A3E;--cream:#FDFBF3;--gold:#C97B1A;--teal:#2A7A8C;
+  --muted:#6b7c76;--border:#ddd8cc;--white:#fff;--rose:#9B4F6A;
+  --up:#27ae60;--dn:#e74c3c;
+}
+body{background:var(--cream);font-family:'Nunito',sans-serif;font-size:14px;color:var(--green);min-height:100vh}
+
+/* LOGIN */
+#loginScreen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+#loginScreen.show{display:flex}
+.lcard{background:var(--white);border-radius:20px;max-width:380px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden}
+.lcard-top{background:var(--green);padding:26px 28px 22px;position:relative}
+.lcard-top::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rose),var(--gold),var(--teal))}
+.lcard-logo{height:24px;filter:brightness(0) invert(1)}
+.lcard-body{padding:28px}
+.lcard-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900;color:var(--green);margin-bottom:8px}
+.lcard-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.lcard-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--green);outline:none;background:var(--cream);margin-bottom:12px}
+.lcard-input:focus{border-color:var(--teal);background:#fff}
+.lcard-btn{width:100%;background:var(--green);color:#fff;border:none;border-radius:10px;padding:13px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.lcard-btn:disabled{background:var(--muted);cursor:not-allowed}
+.lcard-msg{margin-top:12px;font-size:13px;font-weight:600;min-height:18px;text-align:center}
+.lcard-msg.success{color:var(--teal)}
+.lcard-msg.error{color:var(--dn)}
+
+/* APP */
+#appScreen{display:none}
+#appScreen.show{display:block}
+.header{background:var(--green);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rose),var(--gold),var(--teal))}
+.header-logo{height:20px;filter:brightness(0) invert(1)}
+.header-right{display:flex;align-items:center;gap:8px}
+.header-name{font-family:'Fraunces',serif;font-size:.85rem;font-style:italic;color:rgba(255,255,255,.7)}
+.sync-status{font-size:10px;font-weight:700;color:rgba(255,255,255,.45)}
+
+.schema-toggle{background:var(--white);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;position:sticky;top:51px;z-index:100}
+.schema-btn{flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border);background:var(--cream);font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
+.schema-btn.active{background:var(--green);border-color:var(--green);color:#fff}
+.schema-btn .schema-label{display:block;font-size:10px;font-weight:400;opacity:.7;margin-top:2px}
+
+.week-nav{background:var(--white);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;position:sticky;top:99px;z-index:99}
+.week-nav::-webkit-scrollbar{display:none}
+.week-btn{flex-shrink:0;padding:4px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--cream);font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer}
+.week-btn.active{background:var(--green);border-color:var(--green);color:#fff}
+.week-btn.has-data{border-color:var(--teal);color:var(--teal)}
+
+.container{max-width:720px;margin:0 auto;padding:14px 13px 100px}
+.week-meta{margin-bottom:12px;padding:0 4px}
+.week-label{font-family:'Fraunces',serif;font-size:1.2rem;font-weight:900}
+.week-label span{font-style:italic;color:var(--gold)}
+.phase-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-top:4px}
+.p1{background:#edf2f0;color:var(--green)}
+.p2{background:#fdf6ec;color:var(--gold)}
+.p3{background:#eef7f9;color:var(--teal)}
+
+.warmup-card{background:var(--green);border-radius:12px;padding:12px 15px;margin-bottom:12px}
+.warmup-title{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.warmup-text{font-size:13px;color:rgba(255,255,255,.8)}
+
+.exercise{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.ex-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.ex-name{font-weight:700;font-size:14px;color:var(--green);flex:1}
+.ex-tag{font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0;margin-top:2px}
+.tag-compound{background:#edf2f0;color:var(--green)}
+.tag-isolation{background:#fdf6ec;color:var(--gold)}
+.tag-core{background:#eef7f9;color:var(--teal)}
+.tag-cardio{background:#fce8ef;color:var(--rose)}
+.ex-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.badge-reps{background:#fce8ef;color:var(--rose)}
+.badge-prog{background:#fdf6ec;color:var(--gold)}
+.ex-note{font-size:11px;color:var(--teal);font-style:italic;padding:5px 8px;background:#eef7f9;border-radius:6px;margin-bottom:7px;line-height:1.5}
+.ex-progress{font-size:11px;color:var(--gold);padding:5px 8px;background:#fdf6ec;border-radius:6px;margin-bottom:7px;line-height:1.5}
+
+.set-row{display:grid;gap:4px;align-items:center;margin-bottom:3px}
+.col-hdr{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);text-align:center}
+.set-num{font-size:11px;color:var(--muted);font-weight:700;text-align:center}
+input[type="text"]{width:100%;background:var(--cream);border:1px solid var(--border);border-radius:7px;padding:5px 3px;font-family:'Nunito',sans-serif;font-size:12px;color:var(--green);text-align:center;outline:none}
+input[type="text"]:focus{border-color:var(--teal);background:#fff}
+input::placeholder{color:#ccc;font-size:10px}
+
+.vol-bar{margin-top:6px;padding:6px 9px;background:var(--cream);border-radius:8px;border:1px solid var(--border)}
+.vol-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.vol-num{font-size:11px;font-weight:700}
+.vol-diff{font-size:11px;font-weight:700}
+.vol-track{height:3px;background:var(--border);border-radius:4px;overflow:hidden}
+.vol-fill{height:100%;border-radius:4px;transition:width .3s}
+
+.notes-block{background:#fafaf7;border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:10px}
+.notes-label{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+textarea{width:100%;background:#fff;border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-family:'Nunito',sans-serif;font-size:12px;color:var(--green);outline:none;resize:none;height:48px}
+textarea:focus{border-color:var(--teal)}
+
+.save-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:100}
+.btn-save{flex:1;background:var(--green);color:#fff;border:none;border-radius:10px;padding:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.save-msg{font-size:12px;color:var(--teal);font-weight:700;display:none;min-width:80px}
+
+@keyframes squat-body{0%,100%{transform:translateY(0)}50%{transform:translateY(28px)}}
+@keyframes squat-arm-l{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-30deg)}}
+@keyframes squat-arm-r{0%,100%{transform:rotate(0deg)}50%{transform:rotate(30deg)}}
+@keyframes hip-thrust-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
+@keyframes abduct-leg{0%,100%{transform:rotate(0deg)}50%{transform:rotate(35deg)}}
+@keyframes lunge-down{0%,100%{transform:translateY(0)}50%{transform:translateY(20px)}}
+@keyframes kickback-leg{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-50deg)}}
+@keyframes jump-sq-body{0%,40%{transform:translateY(0)}60%{transform:translateY(-20px)}100%{transform:translateY(0)}}
+@keyframes pushup-body{0%,100%{transform:translateY(0)}50%{transform:translateY(14px)}}
+@keyframes hollow-legs{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-10deg)}}
+@keyframes hollow-arms{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes jj-arms{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-70deg)}}
+@keyframes jj-legs{0%,100%{d:path("M35 95 L30 126")}50%{d:path("M38 95 L22 126")}}
+@keyframes mc-leg-l{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-55deg)}}
+@keyframes mc-leg-r{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-55deg)}50%,100%{transform:rotate(0deg)}}
+@keyframes plank-pushup{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes burpee-body{0%,100%{transform:translateY(0) scaleY(1)}40%{transform:translateY(25px) scaleY(0.7)}70%{transform:translateY(-15px) scaleY(1)}}
+@keyframes sideplan-hip{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="lcard-top">
+      <img class="lcard-logo" src="data:image/png;base64,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" alt="tal&coaching">
+    </div>
+    <div class="lcard-body">
+      <div class="lcard-title">Log in</div>
+      <div class="lcard-sub">Vul je e-mailadres in. Je ontvangt een magische link om in te loggen.</div>
+      <input class="lcard-input" type="email" id="loginEmail" placeholder="jouw@email.nl">
+      <button class="lcard-btn" id="loginBtn" onclick="sendMagicLink()">Stuur inloglink</button>
+      <div class="lcard-msg" id="loginMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="header">
+    <img class="header-logo" src="data:image/png;base64,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" alt="tal&coaching">
+    <div class="header-right">
+      <span class="header-name">Maud</span>
+      <span class="sync-status" id="syncStatus">laden...</span>
+    </div>
+  </div>
+
+  <div class="schema-toggle">
+    <button class="schema-btn active" onclick="setSchema('A')" id="btnA">
+      Schema A
+      <span class="schema-label">Kracht</span>
+    </button>
+    <button class="schema-btn" onclick="setSchema('B')" id="btnB">
+      Schema B
+      <span class="schema-label">Circuit</span>
+    </button>
+  </div>
+
+  <div class="week-nav" id="weekNav"></div>
+  <div class="container" id="mainContent"></div>
+  <div class="save-bar">
+    <button class="btn-save" onclick="saveWeek()">Opslaan</button>
+    <div class="save-msg" id="saveMsg">Opgeslagen</div>
+  </div>
+</div>
+
+<script>
+const ILLUSTRATIONS = {
+  'Squats': `<div class="ex-illus"><div class="illus-step">
+<svg width="100" height="140" viewBox="0 0 100 140" style="overflow:visible">
+  <rect width="100" height="140" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="134" x2="95" y2="134" stroke="#ddd8cc" stroke-width="2"/>
+  <g style="animation:squat-body 1.8s ease-in-out infinite;transform-origin:50px 80px">
+    <!-- Hoofd -->
+    <circle cx="50" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="50" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+    <!-- Nek -->
+    <rect x="46" y="31" width="8" height="6" fill="#c8a882"/>
+    <!-- Torso -->
+    <path d="M37 37 Q50 34 63 37 L61 72 Q50 75 39 72 Z" fill="#2D4A3E"/>
+    <!-- Arm links -->
+    <g style="animation:squat-arm-l 1.8s ease-in-out infinite;transform-origin:37px 40px">
+      <path d="M37 40 Q28 54 30 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <circle cx="30" cy="69" r="4" fill="#c8a882"/>
+    </g>
+    <!-- Arm rechts -->
+    <g style="animation:squat-arm-r 1.8s ease-in-out infinite;transform-origin:63px 40px">
+      <path d="M63 40 Q72 54 70 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <circle cx="70" cy="69" r="4" fill="#c8a882"/>
+    </g>
+    <!-- Broek -->
+    <path d="M39 72 L36 108 L46 108 L50 88 L54 108 L64 108 L61 72 Z" fill="#9B4F6A"/>
+    <!-- Benen -->
+    <path d="M36 108 L34 132" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M64 108 L66 132" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="33" cy="133" rx="8" ry="4" fill="#5C3A1E"/>
+    <ellipse cx="67" cy="133" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="50" y="12" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">SQUAT</text>
+</svg>
+<div class="illus-step-lbl">Herhaling animatie</div></div></div>`,
+  'Reverse Hip Thrust (voet op bankje)': `<div class="ex-illus"><div class="illus-step">
+<svg width="180" height="120" viewBox="0 0 180 120" style="overflow:visible">
+  <rect width="180" height="120" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="112" x2="175" y2="112" stroke="#ddd8cc" stroke-width="2"/>
+  <!-- Matje -->
+  <rect x="10" y="106" width="160" height="6" rx="2" fill="#bde0e8" opacity="0.5"/>
+  <!-- Bankje -->
+  <rect x="110" y="78" width="55" height="8" rx="3" fill="#8B6B4A"/>
+  <rect x="115" y="86" width="5" height="24" fill="#5C3A1E"/>
+  <rect x="155" y="86" width="5" height="24" fill="#5C3A1E"/>
+  <!-- Animatie groep heupen -->
+  <g style="animation:hip-thrust-up 2s ease-in-out infinite;transform-origin:75px 85px">
+    <!-- Schouders op grond -->
+    <path d="M20 96 Q45 92 60 90" stroke="#2D4A3E" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <!-- Torso omhoog -->
+    <path d="M60 90 Q78 76 94 68" stroke="#2D4A3E" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <!-- Hoofd -->
+    <circle cx="14" cy="96" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="14" cy="89" rx="11" ry="6" fill="#5C3A1E"/>
+    <!-- Bovenbeen schuin -->
+    <path d="M94 68 Q108 80 118 96" stroke="#9B4F6A" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <!-- Onderbeen verticaal -->
+    <path d="M118 96 Q120 104 121 110" stroke="#c8a882" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <ellipse cx="121" cy="111" rx="8" ry="4" fill="#5C3A1E"/>
+    <!-- Heup highlight -->
+    <circle cx="94" cy="68" r="6" fill="#C97B1A" opacity="0.4"/>
+  </g>
+  <!-- Armen langs lichaam -->
+  <path d="M36 96 Q38 104 38 110" stroke="#c8a882" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <text x="90" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">HIP THRUST</text>
+  <text x="90" y="26" text-anchor="middle" font-size="7" fill="#9B4F6A" font-family="sans-serif">Squeeze billen bovenaan!</text>
+</svg>
+<div class="illus-step-lbl">Hip thrust animatie</div></div></div>`,
+  'Banded Side Abduction': `<div class="ex-illus"><div class="illus-step">
+<svg width="130" height="150" viewBox="0 0 130 150" style="overflow:visible">
+  <rect width="130" height="150" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="143" x2="125" y2="143" stroke="#ddd8cc" stroke-width="2"/>
+  <!-- Staand been -->
+  <path d="M48 108 L46 141" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <ellipse cx="45" cy="142" rx="8" ry="4" fill="#5C3A1E"/>
+  <!-- Band -->
+  <path d="M48 120 Q80 116 100 120" stroke="#C97B1A" stroke-width="3" stroke-dasharray="5,2" fill="none" opacity="0.7"/>
+  <!-- Torso + hoofd -->
+  <circle cx="50" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="50" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+  <rect x="46" y="31" width="8" height="6" fill="#c8a882"/>
+  <path d="M38 37 Q50 34 62 37 L61 72 Q50 75 39 72 Z" fill="#2D4A3E"/>
+  <!-- Armen -->
+  <path d="M38 40 Q30 54 32 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M62 40 Q70 54 68 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- Broek -->
+  <path d="M39 72 L36 108 L50 108 L50 72" fill="#9B4F6A"/>
+  <path d="M61 72 L50 108" fill="#9B4F6A"/>
+  <!-- Zijwaarts been animatie -->
+  <g style="animation:abduct-leg 2s ease-in-out infinite;transform-origin:61px 72px">
+    <path d="M61 72 L88 108" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M88 108 L96 130" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="97" cy="132" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="65" y="12" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">SIDE ABDUCTION</text>
+</svg>
+<div class="illus-step-lbl">Abductie animatie</div></div></div>`,
+  'Reverse to Front Lunge': `<div class="ex-illus"><div class="illus-step">
+<svg width="120" height="150" viewBox="0 0 120 150" style="overflow:visible">
+  <rect width="120" height="150" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="143" x2="115" y2="143" stroke="#ddd8cc" stroke-width="2"/>
+  <circle cx="60" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="60" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+  <rect x="56" y="31" width="8" height="6" fill="#c8a882"/>
+  <path d="M48 37 Q60 34 72 37 L70 68 Q60 71 50 68 Z" fill="#2D4A3E"/>
+  <path d="M48 40 Q40 54 42 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M72 40 Q80 54 78 68" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- Lunge animatie groep -->
+  <g style="animation:lunge-down 2.4s ease-in-out infinite;transform-origin:60px 68px">
+    <path d="M50 68 L44 108" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M44 108 L42 138" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="41" cy="140" rx="8" ry="4" fill="#5C3A1E"/>
+    <path d="M70 68 L84 108" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <circle cx="85" cy="110" r="5" fill="#C97B1A" opacity="0.6"/>
+    <path d="M85 110 L86 138" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="86" cy="140" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="60" y="12" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">LUNGE</text>
+  <text x="60" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Achteruit en vooruit</text>
+</svg>
+<div class="illus-step-lbl">Lunge animatie</div></div></div>`,
+  'Kickbacks (banden)': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="120" viewBox="0 0 170 120" style="overflow:visible">
+  <rect width="170" height="120" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="112" x2="165" y2="112" stroke="#ddd8cc" stroke-width="2"/>
+  <!-- Hoofd -->
+  <circle cx="22" cy="44" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="37" rx="11" ry="6" fill="#5C3A1E"/>
+  <!-- Torso horizontaal -->
+  <path d="M26 52 Q65 46 92 50" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <!-- Armen naar grond -->
+  <path d="M32 54 Q30 68 29 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M55 50 Q54 64 53 80" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="29" cy="84" rx="7" ry="4" fill="#c8a882"/>
+  <ellipse cx="53" cy="82" rx="7" ry="4" fill="#c8a882"/>
+  <!-- Knie op grond been -->
+  <path d="M92 50 Q100 60 104 76" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <ellipse cx="104" cy="78" rx="7" ry="4" fill="#9B4F6A"/>
+  <!-- Kickback been animatie -->
+  <g style="animation:kickback-leg 2s ease-in-out infinite;transform-origin:92px 50px">
+    <path d="M92 50 Q108 40 128 32" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M128 32 Q148 28 158 26" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="159" cy="26" rx="7" ry="4" fill="#5C3A1E"/>
+    <!-- Band -->
+    <path d="M104 78 Q128 50 155 28" stroke="#C97B1A" stroke-width="2" stroke-dasharray="4,3" fill="none" opacity="0.7"/>
+  </g>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">KICKBACK</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#9B4F6A" font-family="sans-serif">Squeeze bil bovenaan!</text>
+</svg>
+<div class="illus-step-lbl">Kickback animatie</div></div></div>`,
+  'Jump Squats': `<div class="ex-illus"><div class="illus-step">
+<svg width="100" height="150" viewBox="0 0 100 150" style="overflow:visible">
+  <rect width="100" height="150" rx="8" fill="#fce8ef"/>
+  <line x1="5" y1="143" x2="95" y2="143" stroke="#f5c0cf" stroke-width="2"/>
+  <g style="animation:jump-sq-body 1.6s ease-in-out infinite;transform-origin:50px 90px">
+    <circle cx="50" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="50" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+    <rect x="46" y="31" width="8" height="6" fill="#c8a882"/>
+    <path d="M38 37 Q50 34 62 37 L61 68 Q50 71 39 68 Z" fill="#2D4A3E"/>
+    <path d="M38 40 Q26 50 24 62" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M62 40 Q74 50 76 62" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M39 68 L34 108 L44 108 L50 86 L56 108 L66 108 L61 68 Z" fill="#9B4F6A"/>
+    <path d="M34 108 L32 140" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M66 108 L68 140" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="31" cy="141" rx="8" ry="4" fill="#5C3A1E"/>
+    <ellipse cx="69" cy="141" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <!-- Pijl omhoog -->
+  <path d="M50 8 L50 2" stroke="#C97B1A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M46 5 L50 2 L54 5" stroke="#C97B1A" stroke-width="2" fill="none"/>
+  <text x="50" y="16" text-anchor="middle" font-size="8" fill="#9B4F6A" font-family="sans-serif" font-weight="bold">JUMP SQUAT</text>
+</svg>
+<div class="illus-step-lbl">Jump squat</div></div></div>`,
+  'Knee Push-ups tot max + High Plank hold': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="110" viewBox="0 0 170 110" style="overflow:visible">
+  <rect width="170" height="110" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="102" x2="165" y2="102" stroke="#ddd8cc" stroke-width="2"/>
+  <!-- Knie op grond -->
+  <ellipse cx="120" cy="98" rx="9" ry="5" fill="#9B4F6A"/>
+  <path d="M100 74 Q108 86 120 96" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M120 96 Q140 96 155 96" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <!-- Push-up animatie -->
+  <g style="animation:pushup-body 1.8s ease-in-out infinite;transform-origin:50px 60px">
+    <circle cx="22" cy="38" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="22" cy="31" rx="11" ry="6" fill="#5C3A1E"/>
+    <path d="M26 46 Q62 56 100 68" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M28 48 Q24 62 22 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M50 54 Q48 68 46 84" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <ellipse cx="22" cy="84" rx="7" ry="4" fill="#c8a882"/>
+    <ellipse cx="46" cy="86" rx="7" ry="4" fill="#c8a882"/>
+  </g>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">KNEE PUSH-UP</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#9B4F6A" font-family="sans-serif">Tot max, dan plank hold!</text>
+</svg>
+<div class="illus-step-lbl">Push-up + plank</div></div></div>`,
+  'Hollow Hold': `<div class="ex-illus"><div class="illus-step">
+<svg width="180" height="110" viewBox="0 0 180 110" style="overflow:visible">
+  <rect width="180" height="110" rx="8" fill="#eef7f9"/>
+  <line x1="5" y1="102" x2="175" y2="102" stroke="#bde0e8" stroke-width="2"/>
+  <rect x="10" y="96" width="160" height="6" rx="2" fill="#bde0e8" opacity="0.4"/>
+  <!-- Torso op grond -->
+  <path d="M18 82 Q80 74 130 80" stroke="#2D4A3E" stroke-width="13" stroke-linecap="round" fill="none"/>
+  <!-- Hoofd -->
+  <circle cx="12" cy="82" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="12" cy="75" rx="11" ry="6" fill="#5C3A1E"/>
+  <!-- Armen omhoog animatie -->
+  <g style="animation:hollow-arms 2.2s ease-in-out infinite;transform-origin:55px 78px">
+    <path d="M38 78 Q38 64 38 50" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M58 76 Q58 62 58 48" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <circle cx="38" cy="48" r="5" fill="#c8a882"/>
+    <circle cx="58" cy="46" r="5" fill="#c8a882"/>
+  </g>
+  <!-- Benen omhoog animatie -->
+  <g style="animation:hollow-legs 2.2s ease-in-out infinite;transform-origin:130px 80px">
+    <path d="M130 80 Q142 62 156 48" stroke="#9B4F6A" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <path d="M156 48 Q164 44 170 42" stroke="#c8a882" stroke-width="9" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- Rug plat indicator -->
+  <line x1="10" y1="92" x2="140" y2="92" stroke="#C97B1A" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="90" y="14" text-anchor="middle" font-size="8" fill="#2A7A8C" font-family="sans-serif" font-weight="bold">HOLLOW HOLD</text>
+  <text x="90" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Onderrug PLAT op grond!</text>
+</svg>
+<div class="illus-step-lbl">Hollow hold</div></div></div>`,
+  'Knee Side Plank': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="110" viewBox="0 0 170 110" style="overflow:visible">
+  <rect width="170" height="110" rx="8" fill="#eef7f9"/>
+  <line x1="5" y1="102" x2="165" y2="102" stroke="#bde0e8" stroke-width="2"/>
+  <circle cx="22" cy="28" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="21" rx="11" ry="6" fill="#5C3A1E"/>
+  <!-- Side plank animatie (heup op-neer) -->
+  <g style="animation:sideplan-hip 2s ease-in-out infinite;transform-origin:80px 65px">
+    <path d="M26 36 Q62 52 96 68" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M96 68 Q118 76 140 84" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="140" cy="85" r="7" fill="#9B4F6A"/>
+    <path d="M140 85 Q152 88 160 90" stroke="#c8a882" stroke-width="9" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- Elleboog op grond -->
+  <path d="M26 38 Q22 56 20 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="20" cy="84" rx="8" ry="5" fill="#c8a882"/>
+  <!-- Arm omhoog -->
+  <path d="M56 54 Q54 42 52 30" stroke="#c8a882" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="52" cy="28" r="4" fill="#c8a882"/>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2A7A8C" font-family="sans-serif" font-weight="bold">SIDE PLANK</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Heup omhoog drukken!</text>
+</svg>
+<div class="illus-step-lbl">Side plank</div></div></div>`,
+  'Jumping Jacks': `<div class="ex-illus"><div class="illus-step">
+<svg width="110" height="150" viewBox="0 0 110 150" style="overflow:visible">
+  <rect width="110" height="150" rx="8" fill="#fce8ef"/>
+  <line x1="5" y1="143" x2="105" y2="143" stroke="#f5c0cf" stroke-width="2"/>
+  <circle cx="55" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="55" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+  <rect x="51" y="31" width="8" height="6" fill="#c8a882"/>
+  <path d="M43 37 Q55 34 67 37 L65 70 Q55 73 45 70 Z" fill="#2D4A3E"/>
+  <!-- Arm links animatie -->
+  <g style="animation:jj-arms 1.2s ease-in-out infinite;transform-origin:43px 40px">
+    <path d="M43 40 Q30 44 18 42" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <circle cx="17" cy="42" r="4" fill="#c8a882"/>
+  </g>
+  <!-- Arm rechts animatie -->
+  <g style="animation:jj-arms 1.2s ease-in-out infinite;transform-origin:67px 40px;animation-direction:reverse">
+    <path d="M67 40 Q80 44 92 42" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <circle cx="93" cy="42" r="4" fill="#c8a882"/>
+  </g>
+  <!-- Been links animatie -->
+  <g style="animation:abduct-leg 1.2s ease-in-out infinite;transform-origin:45px 70px">
+    <path d="M45 70 L34 108" stroke="#9B4F6A" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M34 108 L32 140" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <ellipse cx="31" cy="141" rx="7" ry="4" fill="#5C3A1E"/>
+  </g>
+  <!-- Been rechts animatie -->
+  <g style="animation:abduct-leg 1.2s ease-in-out infinite;transform-origin:65px 70px;animation-direction:reverse">
+    <path d="M65 70 L76 108" stroke="#9B4F6A" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M76 108 L78 140" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <ellipse cx="79" cy="141" rx="7" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="55" y="12" text-anchor="middle" font-size="8" fill="#9B4F6A" font-family="sans-serif" font-weight="bold">JUMPING JACKS</text>
+</svg>
+<div class="illus-step-lbl">Jumping jacks</div></div></div>`,
+  'Mountain Climbers': `<div class="ex-illus"><div class="illus-step">
+<svg width="180" height="110" viewBox="0 0 180 110" style="overflow:visible">
+  <rect width="180" height="110" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="102" x2="175" y2="102" stroke="#ddd8cc" stroke-width="2"/>
+  <circle cx="22" cy="34" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="27" rx="11" ry="6" fill="#5C3A1E"/>
+  <!-- Torso plankhoud -->
+  <path d="M26 42 Q70 52 112 66 Q140 74 162 82" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <!-- Handen -->
+  <path d="M28 44 Q24 58 22 78" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M50 50 Q47 64 44 80" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="22" cy="80" rx="7" ry="4" fill="#c8a882"/>
+  <ellipse cx="44" cy="82" rx="7" ry="4" fill="#c8a882"/>
+  <!-- Voeten -->
+  <ellipse cx="163" cy="84" rx="7" ry="4" fill="#5C3A1E"/>
+  <!-- Knie L naar borst -->
+  <g style="animation:mc-leg-l 1.4s ease-in-out infinite;transform-origin:112px 66px">
+    <path d="M112 66 Q104 54 98 44" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M98 44 Q96 36 95 30" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- Knie R terug -->
+  <g style="animation:mc-leg-l 1.4s ease-in-out infinite reverse;transform-origin:136px 74px">
+    <path d="M136 74 Q144 80 150 84" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M150 84 Q156 86 162 86" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+  </g>
+  <text x="90" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">MOUNTAIN CLIMBERS</text>
+  <text x="90" y="26" text-anchor="middle" font-size="7" fill="#9B4F6A" font-family="sans-serif">Snel tempo!</text>
+</svg>
+<div class="illus-step-lbl">Mountain climbers</div></div></div>`,
+  'Plank to Push-up': `<div class="ex-illus"><div class="illus-step">
+<svg width="180" height="110" viewBox="0 0 180 110" style="overflow:visible">
+  <rect width="180" height="110" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="102" x2="175" y2="102" stroke="#ddd8cc" stroke-width="2"/>
+  <circle cx="22" cy="36" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="29" rx="11" ry="6" fill="#5C3A1E"/>
+  <g style="animation:plank-pushup 2s ease-in-out infinite;transform-origin:90px 60px">
+    <path d="M26 44 Q70 54 112 68 Q138 76 162 84" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M28 46 Q24 60 22 80" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M50 52 Q47 66 44 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <ellipse cx="22" cy="82" rx="8" ry="4" fill="#c8a882"/>
+    <ellipse cx="44" cy="84" rx="8" ry="4" fill="#c8a882"/>
+    <ellipse cx="163" cy="86" rx="7" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="90" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">PLANK TO PUSH-UP</text>
+  <text x="90" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Ellebogen naar handen en terug</text>
+</svg>
+<div class="illus-step-lbl">Plank to push-up</div></div></div>`,
+  'Knee Push-ups': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="110" viewBox="0 0 170 110" style="overflow:visible">
+  <rect width="170" height="110" rx="8" fill="#f0ede6"/>
+  <line x1="5" y1="102" x2="165" y2="102" stroke="#ddd8cc" stroke-width="2"/>
+  <ellipse cx="118" cy="97" rx="9" ry="5" fill="#9B4F6A"/>
+  <path d="M100 74 Q108 85 118 95" stroke="#9B4F6A" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M118 95 Q140 95 155 95" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <g style="animation:pushup-body 1.8s ease-in-out infinite;transform-origin:55px 58px">
+    <circle cx="22" cy="36" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="22" cy="29" rx="11" ry="6" fill="#5C3A1E"/>
+    <path d="M26 44 Q60 54 100 68" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M28 46 Q24 60 22 80" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M48 52 Q46 66 44 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <ellipse cx="22" cy="82" rx="7" ry="4" fill="#c8a882"/>
+    <ellipse cx="44" cy="84" rx="7" ry="4" fill="#c8a882"/>
+  </g>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2D4A3E" font-family="sans-serif" font-weight="bold">KNEE PUSH-UPS</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#9B4F6A" font-family="sans-serif">Borst naar grond - max reps!</text>
+</svg>
+<div class="illus-step-lbl">Knee push-up</div></div></div>`,
+  'Plank (ellebogen)': `<div class="ex-illus"><div class="illus-step">
+<svg width="180" height="100" viewBox="0 0 180 100" style="overflow:visible">
+  <rect width="180" height="100" rx="8" fill="#eef7f9"/>
+  <line x1="5" y1="92" x2="175" y2="92" stroke="#bde0e8" stroke-width="2"/>
+  <circle cx="22" cy="32" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="25" rx="11" ry="6" fill="#5C3A1E"/>
+  <path d="M26 40 Q70 52 112 66 Q140 74 164 82" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M28 42 Q24 56 22 76" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M48 48 Q45 62 42 78" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="22" cy="78" rx="8" ry="5" fill="#c8a882"/>
+  <ellipse cx="42" cy="80" rx="8" ry="5" fill="#c8a882"/>
+  <ellipse cx="165" cy="84" rx="7" ry="4" fill="#5C3A1E"/>
+  <line x1="22" y1="32" x2="166" y2="83" stroke="#C97B1A" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="90" y="14" text-anchor="middle" font-size="8" fill="#2A7A8C" font-family="sans-serif" font-weight="bold">PLANK</text>
+  <text x="90" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Rechte lijn - buik gespannen!</text>
+</svg>
+<div class="illus-step-lbl">Plank hold</div></div></div>`,
+  'Side Plank (links)': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="110" viewBox="0 0 170 110" style="overflow:visible">
+  <rect width="170" height="110" rx="8" fill="#eef7f9"/>
+  <line x1="5" y1="102" x2="165" y2="102" stroke="#bde0e8" stroke-width="2"/>
+  <circle cx="22" cy="28" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="22" cy="21" rx="11" ry="6" fill="#5C3A1E"/>
+  <g style="animation:sideplan-hip 2s ease-in-out infinite;transform-origin:80px 65px">
+    <path d="M26 36 Q62 52 96 68" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M96 68 Q120 76 148 86" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <ellipse cx="149" cy="88" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <path d="M26 38 Q22 56 20 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="20" cy="84" rx="8" ry="5" fill="#c8a882"/>
+  <path d="M55 52 Q53 40 51 28" stroke="#c8a882" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="51" cy="26" r="4" fill="#c8a882"/>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2A7A8C" font-family="sans-serif" font-weight="bold">SIDE PLANK LINKS</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Heup omhoog!</text>
+</svg>
+<div class="illus-step-lbl">Links</div></div></div>`,
+  'Side Plank (rechts)': `<div class="ex-illus"><div class="illus-step">
+<svg width="170" height="110" viewBox="0 0 170 110" style="overflow:visible">
+  <rect width="170" height="110" rx="8" fill="#eef7f9"/>
+  <line x1="5" y1="102" x2="165" y2="102" stroke="#bde0e8" stroke-width="2"/>
+  <circle cx="148" cy="28" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+  <ellipse cx="148" cy="21" rx="11" ry="6" fill="#5C3A1E"/>
+  <g style="animation:sideplan-hip 2s ease-in-out infinite;transform-origin:90px 65px">
+    <path d="M144 36 Q108 52 74 68" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M74 68 Q50 76 22 86" stroke="#2D4A3E" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <ellipse cx="21" cy="88" rx="8" ry="4" fill="#5C3A1E"/>
+  </g>
+  <path d="M144 38 Q148 56 150 82" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="150" cy="84" rx="8" ry="5" fill="#c8a882"/>
+  <path d="M115 52 Q117 40 119 28" stroke="#c8a882" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="119" cy="26" r="4" fill="#c8a882"/>
+  <text x="85" y="14" text-anchor="middle" font-size="8" fill="#2A7A8C" font-family="sans-serif" font-weight="bold">SIDE PLANK RECHTS</text>
+  <text x="85" y="26" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Heup omhoog!</text>
+</svg>
+<div class="illus-step-lbl">Rechts</div></div></div>`,
+  'Burpees (licht)': `<div class="ex-illus"><div class="illus-step">
+<svg width="110" height="150" viewBox="0 0 110 150" style="overflow:visible">
+  <rect width="110" height="150" rx="8" fill="#fce8ef"/>
+  <line x1="5" y1="143" x2="105" y2="143" stroke="#f5c0cf" stroke-width="2"/>
+  <g style="animation:burpee-body 2.4s ease-in-out infinite;transform-origin:55px 80px">
+    <circle cx="55" cy="22" r="10" fill="#c8a882" stroke="#8B6B4A" stroke-width="1.5"/>
+    <ellipse cx="55" cy="15" rx="11" ry="7" fill="#5C3A1E"/>
+    <rect x="51" y="31" width="8" height="6" fill="#c8a882"/>
+    <path d="M43 37 Q55 34 67 37 L65 68 Q55 71 45 68 Z" fill="#2D4A3E"/>
+    <path d="M43 40 Q31 50 29 62" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M67 40 Q79 50 81 62" stroke="#c8a882" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M45 68 L38 108 L48 108 L55 86 L62 108 L72 108 L65 68 Z" fill="#9B4F6A"/>
+    <path d="M38 108 L36 140" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M72 108 L74 140" stroke="#c8a882" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <ellipse cx="35" cy="141" rx="7" ry="4" fill="#5C3A1E"/>
+    <ellipse cx="75" cy="141" rx="7" ry="4" fill="#5C3A1E"/>
+  </g>
+  <text x="55" y="12" text-anchor="middle" font-size="8" fill="#9B4F6A" font-family="sans-serif" font-weight="bold">BURPEE</text>
+  <text x="55" y="24" text-anchor="middle" font-size="7" fill="#C97B1A" font-family="sans-serif">Squat - Plank - Omhoog!</text>
+</svg>
+<div class="illus-step-lbl">Burpee</div></div></div>`,
+};const SUPABASE_URL = 'https://kccimgucvfjmyiltaryg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjY2ltZ3VjdmZqbXlpbHRhcnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNzcxMDAsImV4cCI6MjA5NDc1MzEwMH0.fBy4Dwr2D96gqNMfIN_6oZnZjdbwukxaoCD0rQHtLdo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const WEEKS = 12;
+let CW = 1;
+let SCHEMA_KEY = 'A';
+
+const SCHEMA = {
+  A: {
+    label: 'Schema A',
+    warmup: '5-10 minuten rustig bewegen: heupen draaien, beenzwaaien, lichte squats om het lichaam op te warmen.',
+    exercises: [
+      {name:'Squats',tag:'compound',sets:3,reps:'25',
+       note:'Voeten heupbreedte. Diep zakken. Druk via hielen omhoog. Rug recht houden.',
+       progress:'W1-4: Bodyweight. W5+: gewicht toevoegen als techniek goed is.'},
+      {name:'Reverse Hip Thrust (voet op bankje)',tag:'compound',sets:3,reps:'20',
+       note:'Voet op bankje, rug op grond. Druk heup omhoog. Squeeze billen bovenaan. 1 sec hold.',
+       progress:'W1-6: 2 voeten. W7+: progressie naar 1 been als je dat aankan.'},
+      {name:'Banded Side Abduction',tag:'isolation',sets:3,reps:'25 per kant',
+       note:'Band om enkels. Sta op 1 been. Strek het andere been zijwaarts omhoog. Gecontroleerd terug.',
+       progress:'W1-4: Lichte band. W5+: zwaardere band.'},
+      {name:'Reverse to Front Lunge',tag:'compound',sets:3,reps:'maximaal',isMax:true,
+       note:'Stap naar achter in lunge, kom terug, stap direct naar voren in lunge. 1 beweging per been. Tel alleen schone herhalingen.',
+       progress:'W1-4: Eigen gewicht. W5+: dumbbells toevoegen.'},
+      {name:'Kickbacks (banden)',tag:'isolation',sets:3,reps:'20 per been',
+       note:'Op handen en knieen. Band om enkel. Been recht naar achteren. Squeeze bil bovenaan. Langzaam terug.',
+       progress:'W1-4: Lichte band. W5+: zwaardere band of kabelvariant.'},
+      {name:'Jump Squats',tag:'cardio',sets:3,reps:'15',
+       note:'Squat naar beneden, spring explosief omhoog. Zacht landen met gebogen knieen. Direct in volgende squat.',
+       progress:'W1-4: 10 reps. W5-8: 15 reps. W9+: 20 reps.'},
+
+      {name:'Knee Push-ups tot max + High Plank hold',tag:'compound',sets:3,reps:'tot max + 20 sec hold',isMax:true,
+       note:'Doe zoveel knee push-ups als je kunt. Direct daarna in high plank positie houden. Rug recht, billen niet omhoog.',
+       progress:'W1-4: 5+ push-ups. W5+: richting normale push-ups.'},
+      {name:'Hollow Hold',tag:'core',sets:3,reps:'20-30 sec',isometric:true,
+       note:'Rug plat op grond. Benen gestrekt omhoog. Schouders licht van grond. Onderrug plat houden.',
+       progress:'W1-4: 20 sec. W5-8: 25 sec. W9+: 30 sec.'},
+      {name:'Knee Side Plank',tag:'core',sets:3,reps:'20-30 sec per kant',isometric:true,
+       note:'Op knie en onderarm. Rechte lijn knie-heup-schouder. Bovenste heup omhoog drukken.',
+       progress:'W1-6: Op knie. W7+: normale side plank als je dat aankan.'}
+    ]
+  },
+  B: {
+    label: 'Schema B - Circuit',
+    warmup: '5 minuten rustig bewegen: jumping jacks op halve snelheid, heup cirkels, been zwaaien. Maak je lichaam warm.',
+    circuit: true,
+    circuitNote: 'Doe alle oefeningen achter elkaar zonder rust. Na het laatste station: 60-90 sec rust. Dan opnieuw. 3 ronden totaal.',
+    exercises: [
+      {name:'Jumping Jacks',tag:'cardio',sets:3,reps:'40',
+       note:'Voeten samen, armen langs lichaam. Spring uiteen met armen omhoog. Spring terug. Gebruik je danservaring voor ritme en timing.',
+       progress:'W1-4: 30 reps. W5+: 40 reps of sneller tempo.'},
+      {name:'Jump Squats',tag:'compound',sets:3,reps:'15',
+       note:'Squat naar beneden, spring explosief omhoog. Zacht landen met gebogen knieen. Direct in volgende squat.',
+       progress:'W1-4: 10 reps. W5-8: 15 reps. W9+: 20 reps.'},
+      {name:'Mountain Climbers',tag:'cardio',sets:3,reps:'30 sec',isSec:true,
+       note:'Hoge plank. Trek knieen afwisselend naar borst in snel tempo. Heupen laag houden. Adem door.',
+       progress:'W1-4: 20 sec. W5+: 30 sec.'},
+      {name:'Plank to Push-up',tag:'compound',sets:3,reps:'10',
+       note:'Start op ellebogen (plank). Zet 1 hand op de grond, dan de andere. Kom in hoge plank. Zak terug op 1 elleboog, dan de andere. Wissel welke arm je begint.',
+       progress:'W1-4: 8 reps, langzaam. W5+: 10 reps. W9+: 12 reps.'},
+      {name:'Knee Push-ups',tag:'compound',sets:3,reps:'tot max',isMax:true,
+       note:'Op knieen. Handen iets breder dan schouders. Zak tot borst bijna de grond. Druk omhoog. Stop als techniek zakt.',
+       progress:'W1-4: Zo veel als je kunt. W7+: richting normale push-ups.'},
+      {name:'Plank (ellebogen)',tag:'core',sets:3,reps:'30-45 sec',isometric:true,
+       note:'Ellebogen onder schouders. Rechte lijn van hoofd tot hielen. Buik en billen aangespannen. Adem rustig door.',
+       progress:'W1-4: 30 sec. W5-8: 40 sec. W9+: 45 sec.'},
+      {name:'Side Plank (links)',tag:'core',sets:3,reps:'20-30 sec',isometric:true,
+       note:'Op linker onderarm. Rechte lijn van voet tot schouder. Heup omhoog drukken. Bovenste arm recht omhoog.',
+       progress:'W1-4: Op knie. W5+: op voet.'},
+      {name:'Side Plank (rechts)',tag:'core',sets:3,reps:'20-30 sec',isometric:true,
+       note:'Op rechter onderarm. Zelfde als links. Zorg dat je beide kanten even lang houdt.',
+       progress:'W1-4: Op knie. W5+: op voet.'},
+      {name:'Burpees (licht)',tag:'cardio',sets:3,reps:'10',
+       note:'Squat naar beneden, handen op grond, stap benen naar achter (geen sprong), 1 push-up, stap terug, kom omhoog. Bouw tempo op naarmate je sterker wordt.',
+       progress:'W1-4: Zonder push-up en zonder sprong. W5+: met sprong omhoog. W9+: volledige burpee.'},
+      {name:'Hollow Hold',tag:'core',sets:3,reps:'20-30 sec',isometric:true,
+       note:'Rug plat op grond. Benen gestrekt omhoog. Schouders licht van grond. Onderrug plat houden. Adem door.',
+       progress:'W1-4: 20 sec. W5-8: 25 sec. W9+: 30 sec.'}
+    ]
+  }
+};
+
+function getPhase(w){
+  if(w<=4) return {label:'Fase 1 - Opbouw',cls:'p1'};
+  if(w<=8) return {label:'Fase 2 - Opbouw',cls:'p2'};
+  return {label:'Fase 3 - Intensiteit',cls:'p3'};
+}
+
+function fKey(sk,w,ei,s,t){return `maud_${sk}_w${w}_e${ei}_s${s}_${t}`;}
+function nKey(sk,w){return `maud_${sk}_w${w}_notes`;}
+
+async function sbUpsert(row){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/training_sessions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify(row)
+    });
+  }catch(e){console.warn('sync failed',e);}
+}
+
+async function sbLoad(sk,w){
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/training_sessions?client=eq.maud_'+sk+'&week=eq.'+w,{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    const rows=await r.json();
+    if(Array.isArray(rows)) rows.forEach(row=>{
+      if(row.weight) localStorage.setItem(fKey(sk,w,row.exercise,row.set_num,'w'),row.weight);
+      if(row.reps)   localStorage.setItem(fKey(sk,w,row.exercise,row.set_num,'r'),row.reps);
+      if(row.rir)    localStorage.setItem(fKey(sk,w,row.exercise,row.set_num,'rir'),row.rir);
+      if(row.notes)  localStorage.setItem(nKey(sk,w),row.notes);
+    });
+  }catch(e){console.warn('load failed',e);}
+}
+
+function getVol(sk,w,ei){
+  const ex=SCHEMA[sk].exercises[ei];
+  let t=0;
+  for(let s=0;s<ex.sets;s++){
+    const wv=parseFloat(localStorage.getItem(fKey(sk,w,ei,s,'w')))||0;
+    const rv=parseFloat(localStorage.getItem(fKey(sk,w,ei,s,'r')))||0;
+    t+=wv*rv;
+  }
+  return Math.round(t);
+}
+
+function getPrev(sk,w,ei){
+  for(let pw=w-1;pw>=1;pw--){const v=getVol(sk,pw,ei);if(v>0) return {vol:v,week:pw};}
+  return null;
+}
+
+function volHTML(sk,ei){
+  const cur=getVol(sk,CW,ei);
+  const prev=getPrev(sk,CW,ei);
+  let diffTxt='Eerste meting',diffColor='var(--muted)';
+  if(prev){
+    const d=cur-prev.vol;
+    if(d>0){diffTxt='+'+d+' kg (w'+prev.week+')';diffColor='var(--up)';}
+    else if(d<0){diffTxt=d+' kg (w'+prev.week+')';diffColor='var(--dn)';}
+    else diffTxt='Gelijk';
+  }
+  let maxVol=cur;
+  for(let w2=1;w2<=WEEKS;w2++){const v=getVol(sk,w2,ei);if(v>maxVol)maxVol=v;}
+  const pct=maxVol>0?Math.round((cur/maxVol)*100):0;
+  const barColor=cur===0?'var(--border)':!prev?'var(--teal)':cur>=prev.vol?'var(--up)':'var(--dn)';
+  return `<div class="vol-bar"><div class="vol-top"><span class="vol-num">${cur>0?cur+' kg':'Nog invullen'}</span><span class="vol-diff" style="color:${diffColor}">${diffTxt}</span></div><div class="vol-track"><div class="vol-fill" style="width:${pct}%;background:${barColor}"></div></div></div>`;
+}
+
+function buildNav(){
+  const nav=document.getElementById('weekNav');
+  nav.innerHTML='';
+  for(let w=1;w<=WEEKS;w++){
+    const btn=document.createElement('button');
+    btn.className='week-btn'+(w===CW?' active':'');
+    let hasData=false;
+    SCHEMA[SCHEMA_KEY].exercises.forEach((ex,ei)=>{
+      for(let s=0;s<ex.sets;s++) if(localStorage.getItem(fKey(SCHEMA_KEY,w,ei,s,'r'))) hasData=true;
+    });
+    if(hasData&&w!==CW) btn.classList.add('has-data');
+    btn.textContent='W'+w;
+    btn.onclick=async()=>{CW=w;await sbLoad(SCHEMA_KEY,w);buildNav();renderWeek();};
+    nav.appendChild(btn);
+  }
+}
+
+function renderWeek(){
+  const c=document.getElementById('mainContent');
+  const phase=getPhase(CW);
+  const sd=SCHEMA[SCHEMA_KEY];
+  const circuitBlock = sd.circuit ? `<div class="warmup-card" style="background:var(--rose);margin-bottom:12px"><div class="warmup-title" style="color:#fff">Circuit training</div><div class="warmup-text">${sd.circuitNote}</div></div>` : '';
+  c.innerHTML=`<div class="week-meta"><div class="week-label">Week <span>${CW}</span> van ${WEEKS}</div><div class="phase-badge ${phase.cls}">${phase.label}</div></div>
+  <div class="warmup-card"><div class="warmup-title">Warming-up</div><div class="warmup-text">${sd.warmup}</div></div>
+  ${circuitBlock}`;
+
+  sd.exercises.forEach((ex,ei)=>{
+    const isIso=ex.isometric||false;
+    const isMax=ex.isMax||false;
+    const isSec=ex.isSec||false;
+    const noWeight=isIso||isMax||isSec||ex.tag==='cardio';
+
+    let colTpl, hdrHtml;
+    if(noWeight){
+      colTpl='grid-template-columns:20px 1fr 1fr 44px';
+      const midLabel=isIso||isSec?'Sec':'Reps';
+      hdrHtml=`<span></span><span class="col-hdr">Set</span><span class="col-hdr">${midLabel}</span><span class="col-hdr">RIR</span>`;
+    } else {
+      colTpl='grid-template-columns:20px 1fr 1fr 1fr 44px';
+      hdrHtml=`<span></span><span class="col-hdr">Set</span><span class="col-hdr">Kg</span><span class="col-hdr">Reps</span><span class="col-hdr">RIR</span>`;
+    }
+
+    let rows=`<div class="set-row" style="display:grid;${colTpl};gap:4px;margin-bottom:3px">${hdrHtml}</div>`;
+
+    for(let s=0;s<ex.sets;s++){
+      const wVal=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'w'))||'';
+      const rVal=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'r'))||'';
+      const rirVal=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'rir'))||'';
+      const placeholder=isIso||isSec?'sec':'reps';
+
+      rows+=`<div class="set-row" style="display:grid;${colTpl};gap:4px;margin-bottom:3px;align-items:center">
+        <div class="set-num">${s+1}</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center">set ${s+1}</div>
+        ${noWeight
+          ?`<input type="text" placeholder="${placeholder}" value="${rVal}" data-ei="${ei}" data-s="${s}" data-t="r" onchange="autoSave(this)">`
+          :`<input type="text" placeholder="-" value="${wVal}" data-ei="${ei}" data-s="${s}" data-t="w" oninput="liveUpdate(this)" onchange="autoSave(this)">
+            <input type="text" placeholder="-" value="${rVal}" data-ei="${ei}" data-s="${s}" data-t="r" oninput="liveUpdate(this)" onchange="autoSave(this)">`
+        }
+        <input type="text" placeholder="?" value="${rirVal}" data-ei="${ei}" data-s="${s}" data-t="rir" onchange="autoSave(this)">
+      </div>`;
+    }
+
+    const showVol=!noWeight;
+    c.innerHTML+=`<div class="exercise">
+      <div class="ex-top">
+        <div class="ex-name">${ex.name}</div>
+        <div class="ex-tag tag-${ex.tag}">${ex.tag}</div>
+      </div>
+      <div class="ex-badges">
+        <span class="badge badge-reps">${ex.sets}x ${ex.reps}</span>
+        ${ex.progress?`<span class="badge badge-prog">progressie</span>`:''}
+      </div>
+      ${ex.note?`<div class="ex-note">${ex.note}</div>`:''}
+      ${ex.progress&&CW<=8?`<div class="ex-progress">${ex.progress}</div>`:''}
+      ${ILLUSTRATIONS[ex.name]||''}
+      ${rows}
+      ${showVol?`<div id="vol-${ei}">${volHTML(SCHEMA_KEY,ei)}</div>`:''}
+    </div>`;
+  });
+
+  const savedNotes=localStorage.getItem(nKey(SCHEMA_KEY,CW))||'';
+  c.innerHTML+=`<div class="notes-block"><label class="notes-label">Notities</label><textarea placeholder="Hoe voelde het?" onchange="saveNote(this)">${savedNotes}</textarea></div>`;
+}
+
+function autoSave(inp){
+  localStorage.setItem(fKey(SCHEMA_KEY,CW,parseInt(inp.dataset.ei),parseInt(inp.dataset.s),inp.dataset.t),inp.value);
+}
+function saveNote(ta){
+  localStorage.setItem(nKey(SCHEMA_KEY,CW),ta.value);
+}
+function liveUpdate(inp){
+  autoSave(inp);
+  const ei=parseInt(inp.dataset.ei);
+  const volEl=document.getElementById('vol-'+ei);
+  if(volEl) volEl.innerHTML=volHTML(SCHEMA_KEY,ei);
+}
+
+async function saveWeek(){
+  const msg=document.getElementById('saveMsg');
+  msg.style.display='block';
+  msg.textContent='Opslaan...';
+  document.querySelectorAll('input[data-ei]').forEach(i=>autoSave(i));
+  document.querySelectorAll('textarea').forEach(t=>saveNote(t));
+  const promises=[];
+  SCHEMA[SCHEMA_KEY].exercises.forEach((ex,ei)=>{
+    for(let s=0;s<ex.sets;s++){
+      const w=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'w'))||'';
+      const r=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'r'))||'';
+      const rir=localStorage.getItem(fKey(SCHEMA_KEY,CW,ei,s,'rir'))||'';
+      if(w||r||rir) promises.push(sbUpsert({client:'maud_'+SCHEMA_KEY,week:CW,day:0,exercise:ei,set_num:s,weight:w,reps:r,rir:rir}));
+    }
+  });
+  const notes=localStorage.getItem(nKey(SCHEMA_KEY,CW))||'';
+  if(notes) promises.push(sbUpsert({client:'maud_'+SCHEMA_KEY,week:CW,day:0,exercise:-1,set_num:-1,notes:notes}));
+  await Promise.all(promises);
+  buildNav();
+  msg.textContent='Opgeslagen';
+  setTimeout(()=>msg.style.display='none',2500);
+}
+
+async function setSchema(key){
+  SCHEMA_KEY=key;
+  document.getElementById('btnA').classList.toggle('active',key==='A');
+  document.getElementById('btnB').classList.toggle('active',key==='B');
+  CW=1;
+  await sbLoad(key,1);
+  buildNav();
+  renderWeek();
+  window.scrollTo(0,0);
+}
+
+let sx=0,sy=0;
+document.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',async e=>{
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){
+    if(dx<0&&CW<WEEKS){CW++;await sbLoad(SCHEMA_KEY,CW);buildNav();renderWeek();}
+    else if(dx>0&&CW>1){CW--;await sbLoad(SCHEMA_KEY,CW);buildNav();renderWeek();}
+  }
+},{passive:true});
+
+async function sendMagicLink(){
+  const email=document.getElementById('loginEmail').value.trim();
+  if(!email){showLoginMsg('Vul een e-mailadres in.','error');return;}
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='Versturen...';
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}});
+  if(error) showLoginMsg('Fout: '+error.message,'error');
+  else showLoginMsg('Check je e-mail voor de inloglink!','success');
+  btn.disabled=false;btn.textContent='Stuur inloglink';
+}
+function showLoginMsg(msg,type){
+  const el=document.getElementById('loginMsg');
+  el.textContent=msg;el.className='lcard-msg '+type;
+}
+function showApp(){
+  document.getElementById('loginScreen').classList.remove('show');
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').classList.add('show');
+}
+async function startApp(){
+  await sbLoad(SCHEMA_KEY,CW);
+  buildNav();
+  renderWeek();
+  document.getElementById('syncStatus').textContent='gesynchroniseerd';
+}
+async function checkAuth(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){showApp();await startApp();}
+  else document.getElementById('loginScreen').classList.add('show');
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){showApp();await startApp();}
+  });
+}
+
+checkAuth();
+</script>
+</body>
+</html>
